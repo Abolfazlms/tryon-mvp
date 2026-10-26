@@ -7,6 +7,18 @@
 
   // person = FileData شخص؛ cloth = FileData لباس
   const PRESETS = {
+    leffa: {
+      label: 'Leffa (بالاتنه، شلوار، مانتو) — مجوز MIT',
+      space: 'franciszzj/Leffa',
+      api: '/leffa_predict_vt',
+      // مقدار هر نوع: «نوع لباس|مدل وزن‌ها»
+      types: { top: 'upper_body|viton_hd', bottom: 'lower_body|dress_code', outer: 'dresses|dress_code' },
+      // ورودی‌ها: عکس شخص، عکس لباس، ref_acceleration، step، scale، seed، model_type، garment_type، repaint
+      build: (person, cloth, type) => {
+        const [gt, mt] = type.split('|');
+        return [person, cloth, false, 30, 2.5, 42, mt, gt, false];
+      },
+    },
     catvton: {
       label: 'CatVTON (بالاتنه، شلوار و مانتو)',
       space: 'zhengchong/CatVTON',
@@ -79,7 +91,7 @@
         if (ev === 'complete') { reader.cancel().catch(() => {}); return JSON.parse(dat); }
         if (ev === 'error') {
           let m = dat; try { m = JSON.parse(dat); } catch (_) { /* متن */ }
-          throw new Error('خطای Space: ' + (m && m !== 'null' ? (typeof m === 'string' ? m : JSON.stringify(m)) : 'نامشخص (معمولاً تمام‌شدن سهمیه‌ی GPU یا ورودی نامعتبر)'));
+          throw new Error('خطای Space: ' + (m && m !== 'null' ? (typeof m === 'string' ? m : JSON.stringify(m)) : 'نامشخص (اغلب تمام‌شدن سهمیه‌ی GPU رایگان امروز، گاهی با عنوان provider_failed؛ یا ورودی نامعتبر)'));
         }
         if (ev === 'heartbeat' && onWait) onWait();
       }

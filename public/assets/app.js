@@ -484,6 +484,9 @@
   }
 
   /* ---------- حالت رایگان Hugging Face ---------- */
+  const HF_KEY = 'tryon-mvp-hf-token-v1';
+  const tokGet = () => { try { return localStorage.getItem(HF_KEY) || ''; } catch (_) { return ''; } };
+  const tokSet = v => { try { v ? localStorage.setItem(HF_KEY, v) : localStorage.removeItem(HF_KEY); } catch (_) { /* ممنوع */ } };
   const garmentOverrides = {};   // { productId: dataURL }
   const provider = () => (document.querySelector('[name=provider]:checked') || {}).value || 'hf';
 
@@ -510,6 +513,8 @@
       try { garmentOverrides[e.target.dataset.garment] = await fileToDataUrl(f, 768); e.target.nextElementSibling.textContent = 'عکس انتخاب شد.'; }
       catch (_) { alert('این عکس خوانده نشد.'); }
     }));
+    const saved = tokGet();
+    if (saved && !$('#hf-token').value) { $('#hf-token').value = saved; $('#hf-remember').checked = true; }
     syncProvider();
   }
 
@@ -537,6 +542,7 @@
     const box = $('#view-box'), btn = $('#btn-ai');
     const presetKey = $('#hf-preset').value, preset = HFTryOn.PRESETS[presetKey];
     const spaceId = $('#hf-space').value.trim(), token = $('#hf-token').value.trim();
+    tokSet($('#hf-remember').checked ? token : '');
     const sel = selectedProducts();
     // ترتیب لایه‌ها: شلوار، بالاتنه، مانتو/کت
     const order = ['bottom', 'top', 'outer'].filter(c => sel[c]);
@@ -564,7 +570,7 @@
     } catch (err) {
       alert('ساخت تصویر ناموفق بود: ' + err.message);
     } finally {
-      btn.disabled = false; $('#hf-token').value = ''; renderView();
+      btn.disabled = false; if (!$('#hf-remember').checked) $('#hf-token').value = ''; renderView();
     }
   }
 
