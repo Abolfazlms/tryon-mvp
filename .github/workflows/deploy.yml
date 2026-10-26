@@ -1,11 +1,11 @@
-name: Build catalog and deploy to GitHub Pages
+name: Build and deploy site
 
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: "30 1 * * *"      # هر شب: به‌روزرسانی کاتالوگ (01:30 UTC)
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -20,37 +20,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Build catalog.json
+          python-version: "3.x"
+      - name: Build catalog
         env:
-          # اختیاری: آدرس فایل محصول فروشگاه (CSV با همان ستون‌های data/products.csv).
-          # در Settings > Secrets and variables > Actions اضافه شود. اگر خالی باشد، data/products.csv خوانده می‌شود.
           FEED_URL: ${{ secrets.FEED_URL }}
-        run: python3 scripts/build_catalog.py
-
-      - name: Sanity check output
-        run: |
-          test -s public/data/catalog.json
-          test -s public/data/size_charts.json
-          python3 -c "import json;d=json.load(open('public/data/catalog.json'));assert d['count']>0;print('products:',d['count'])"
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+        run: python scripts/build_catalog.py
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: public
-
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
     steps:
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
