@@ -1,174 +1,156 @@
+/* حالت رایگان: صدا زدن Space عمومی Hugging Face از طریق API مستند Gradio (REST).
+ * بدون کتابخانه. نام endpoint و ترتیب پارامترها در PRESETS است؛ اگر Space عوض شد
+ * فقط همین‌جا (یا دکمه‌ی «تست اتصال») باید دیده و اصلاح شود.
+ */
 (() => {
   'use strict';
 
-  const DEFAULT_SPACE = 'PrathamMMallya999/fastfit-tryon';
-  const API_NAME = '/generation_wrapper';
+  // person = FileData شخص؛ cloth = FileData لباس
+  const PRESETS = {
+    leffa: {
+      label: 'Leffa (بالاتنه، شلوار، مانتو) — مجوز MIT',
+      space: 'franciszzj/Leffa',
+      api: '/leffa_predict_vt',
+      // مقدار هر نوع: «نوع لباس|مدل وزن‌ها»
+      types: { top: 'upper_body|viton_hd', bottom: 'lower_body|dress_code', outer: 'dresses|dress_code' },
+      // ورودی‌ها: عکس شخص، عکس لباس، ref_acceleration، step، scale، seed، model_type، garment_type، repaint
+      build: (person, cloth, type) => {
+        const [gt, mt] = type.split('|');
+        return [person, cloth, false, 30, 2.5, 42, mt, gt, false];
+      },
+    },
+    catvton: {
+      label: 'CatVTON (بالاتنه، شلوار و مانتو)',
+      space: 'zhengchong/CatVTON',
+      api: '/submit_function',
+      types: { top: 'upper', bottom: 'lower', outer: 'overall' },
+      build: (person, cloth, type) => [
+        { background: person, layers: [], composite: null }, cloth, type, 50, 2.5, 42, 'result only'],
+    },
+    idm: {
+      label: 'IDM-VTON (فقط بالاتنه و مانتو)',
+      space: 'yisol/IDM-VTON',
+      api: '/tryon',
+      types: { top: 'upper', outer: 'upper' },
+      build: (person, cloth, _type, desc) => [
+        { background: person, layers: [], composite: null }, cloth, desc || 'garment', true, false, 30, 42],
+    },
+  };
 
-  function getHost(spaceId) {
-    const normalized = String(spaceId || '').trim();
-    if (!/^[\w.-]+\/[\w.-]+$/.test(normalized)) {
-      throw new Error('Enter a valid Hugging Face Space ID in owner/space-name format.');
-    }
-    return 'https://' + normalized.toLowerCase().replace(/[/_.]/g, '-') + '.hf.space';
+  const spaceHost = id => 'https://' + id.trim().toLowerCase().replace(/[/_.]/g, '-') + '.hf.space';
+  const authHeaders = token => (token ? { Authorization: 'Bearer ' + token } : {});
+
+  function dataUrlToBlob(u) {
+    const [head, b64] = u.split(',');
+    const mime = (head.match(/:(.*?);/) || [])[1] || 'image/png';
+    const bin = atob(b64); const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
   }
 
-  function authHeaders(token) {
-    return token ? { Authorization: 'Bearer ' + token } : {};
+  async function readError(res) {
+    let t = ''; try { t = await res.text(); } catch (_) { /* خالی */ }
+    let msg = t.slice(0, 300);
+    try { const j = JSON.parse(t); msg = j.detail || j.error || j.message || msg; } catch (_) { /* متن ساده */ }
+    if (res.status === 401 || res.status === 403) msg = 'توکن پذیرفته نشد یا دسترسی ندارد. ' + msg;
+    if (res.status === 429) msg = 'سهمیه‌ی رایگان امروز تمام شده یا درخواست‌ها زیادند؛ بعداً دوباره امتحان کنید. ' + msg;
+    if (res.status === 404 || res.status === 503) msg = 'Space در دسترس نیست یا خوابیده است (چند دقیقه بعد امتحان کنید) یا آدرسش عوض شده. ' + msg;
+    return `HTTP ${res.status}: ${msg}`;
   }
 
-  function dataUrlToBlob(dataUrl) {
-    const response = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/);
-    if (!response) throw new Error('Invalid image data.');
-    const mime = response[1] || 'application/octet-stream';
-    const payload = response[3];
-    if (response[2]) {
-      const binary = atob(payload);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return new Blob([bytes], { type: mime });
-    }
-    return new Blob([decodeURIComponent(payload)], { type: mime });
+  async function upload(host, token, blob, name) {
+    const fd = new FormData(); fd.append('files', blob, name);
+    const res = await fetch(host + '/gradio_api/upload', { method: 'POST', headers: authHeaders(token), body: fd });
+    if (!res.ok) throw new Error(await readError(res));
+    const paths = await res.json();
+    if (!Array.isArray(paths) || !paths[0]) throw new Error('آپلود پاسخ معتبر نداد.');
+    return { path: paths[0], orig_name: name, meta: { _type: 'gradio.FileData' } };
   }
 
-  async function readError(response) {
-    let body = '';
-    try { body = (await response.text()).slice(0, 700); } catch (_) {}
-    try {
-      const parsed = JSON.parse(body);
-      body = parsed.detail || parsed.error || parsed.message || body;
-    } catch (_) {}
-    if (response.status === 401 || response.status === 403) {
-      body = 'Authentication or permission error. ' + body;
-    } else if (response.status === 429) {
-      body = 'Rate limit reached. ' + body;
-    } else if (response.status === 404 || response.status === 503) {
-      body = 'Space unavailable or starting up. ' + body;
-    }
-    return 'HTTP ' + response.status + (body ? ': ' + body : '');
-  }
-
-  async function upload(host, token, dataUrl, filename) {
-    const formData = new FormData();
-    formData.append('files', dataUrlToBlob(dataUrl), filename);
-    const response = await fetch(host + '/gradio_api/upload', {
-      method: 'POST',
-      headers: authHeaders(token),
-      body: formData
+  async function callApi(host, token, api, data, onWait) {
+    const name = api.replace(/^\//, '');
+    const res = await fetch(`${host}/gradio_api/call/${name}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+      body: JSON.stringify({ data }),
     });
-    if (!response.ok) throw new Error(await readError(response));
-    const paths = await response.json();
-    if (!Array.isArray(paths) || !paths[0]) throw new Error('The Space upload endpoint returned no file path.');
-    return { path: paths[0], orig_name: filename, meta: { _type: 'gradio.FileData' } };
-  }
-
-  async function callApi(host, token, data, onWait) {
-    const response = await fetch(host + '/gradio_api/call/' + API_NAME.replace(/^\//, ''), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
-      body: JSON.stringify({ data })
-    });
-    if (!response.ok) throw new Error(await readError(response));
-    const payload = await response.json();
-    if (!payload.event_id) throw new Error('The Space did not return an event ID.');
-    const eventResponse = await fetch(host + '/gradio_api/call/' + API_NAME.replace(/^\//, '') + '/' + encodeURIComponent(payload.event_id), {
-      headers: authHeaders(token)
-    });
-    if (!eventResponse.ok) throw new Error(await readError(eventResponse));
-    const text = await eventResponse.text();
-    const events = text.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trim()).filter(Boolean);
-    for (const event of events) {
-      let parsed;
-      try { parsed = JSON.parse(event); } catch (_) { continue; }
-      if (Array.isArray(parsed) && parsed.length) return parsed;
-      if (parsed && parsed.error) throw new Error(String(parsed.error));
+    if (!res.ok) throw new Error(await readError(res));
+    const { event_id } = await res.json();
+    if (!event_id) throw new Error('event_id برنگشت.');
+    const stream = await fetch(`${host}/gradio_api/call/${name}/${event_id}`, { headers: authHeaders(token) });
+    if (!stream.ok) throw new Error(await readError(stream));
+    const reader = stream.body.getReader(); const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (value) buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) !== -1) {
+        const block = buf.slice(0, i); buf = buf.slice(i + 2);
+        const ev = (block.match(/^event: *(.*)$/m) || [])[1];
+        const dat = (block.match(/^data: *(.*)$/m) || [])[1];
+        if (ev === 'complete') { reader.cancel().catch(() => {}); return JSON.parse(dat); }
+        if (ev === 'error') {
+          let m = dat; try { m = JSON.parse(dat); } catch (_) { /* متن */ }
+          throw new Error('خطای Space: ' + (m && m !== 'null' ? (typeof m === 'string' ? m : JSON.stringify(m)) : 'نامشخص (اغلب تمام‌شدن سهمیه‌ی GPU رایگان امروز، گاهی با عنوان provider_failed؛ یا ورودی نامعتبر)'));
+        }
+        if (ev === 'heartbeat' && onWait) onWait();
+      }
+      if (done) break;
     }
-    if (onWait) onWait('The model returned no output payload.');
-    throw new Error('No result was returned. The Space may be busy or its API schema may have changed.');
+    throw new Error('پاسخ Space ناتمام ماند.');
   }
 
-  function findFile(value) {
-    if (!value) return null;
-    if (Array.isArray(value)) {
-      for (const item of value) { const found = findFile(item); if (found) return found; }
-    } else if (typeof value === 'object') {
-      if (typeof value.url === 'string' || typeof value.path === 'string') return value;
-      for (const key of Object.keys(value)) { const found = findFile(value[key]); if (found) return found; }
+  function findFile(out) {
+    const stack = Array.isArray(out) ? [...out] : [out];
+    while (stack.length) {
+      const x = stack.shift();
+      if (x && typeof x === 'object') {
+        if (x.path || x.url) return x;
+        stack.push(...Object.values(x));
+      }
     }
     return null;
   }
 
-  async function fetchResultAsDataUrl(host, token, file) {
-    const url = file.url
-      ? new URL(file.url, host).href
-      : host + '/gradio_api/file=' + String(file.path).replace(/^\/+/, '');
-    const response = await fetch(url, { headers: authHeaders(token) });
-    if (!response.ok) throw new Error(await readError(response));
-    const blob = await response.blob();
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('Could not read the generated image.'));
-      reader.readAsDataURL(blob);
-    });
+  async function info(spaceId, token) {
+    const host = spaceHost(spaceId);
+    const res = await fetch(host + '/gradio_api/info', { headers: authHeaders(token) });
+    if (!res.ok) throw new Error(await readError(res));
+    const j = await res.json();
+    const ne = j.named_endpoints || {};
+    return Object.entries(ne).map(([k, v]) =>
+      `${k}: ` + (v.parameters || []).map(p => `${p.parameter_name || p.label}${p.parameter_has_default ? '=' + JSON.stringify(p.parameter_default) : ''}`).join(', ')
+    ).join('\n') || 'endpoint نامدار پیدا نشد.';
   }
 
-  async function generate(options) {
-    const host = getHost(options.spaceId || DEFAULT_SPACE);
-    const token = (options.token || '').trim();
-    const imageKeys = ['person', 'upper', 'lower', 'dress', 'shoes', 'bag'];
-    for (const key of imageKeys) {
-      if (!options.images || !options.images[key]) {
-        throw new Error('Missing required image: ' + key + '. The current API schema expects all six image inputs.');
+  // steps: [{ cat, type, label, garmentDataUrl }] به ترتیب اجرا؛ خروجی هر مرحله ورودی مرحله‌ی بعد است.
+  async function run({ spaceId, presetKey, token, personDataUrl, steps, onProgress }) {
+    const preset = PRESETS[presetKey];
+    const host = spaceHost(spaceId);
+    let person = await upload(host, token, dataUrlToBlob(personDataUrl), 'person.jpg');
+    let last = null;
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i];
+      onProgress && onProgress(i + 1, steps.length, s.label);
+      const cloth = await upload(host, token, dataUrlToBlob(s.garmentDataUrl), 'garment.png');
+      const out = await callApi(host, token, preset.api, preset.build(person, cloth, s.type, s.label));
+      const f = findFile(out);
+      if (!f) throw new Error('Space تصویری برنگرداند.');
+      last = f;
+      // ورودی مرحله‌ی بعد: همان فایل روی همان Space
+      person = { path: f.path || f.url, url: f.url, orig_name: f.orig_name || 'result.png', meta: { _type: 'gradio.FileData' } };
+    }
+    const url = last.url || `${host}/gradio_api/file=${last.path}`;
+    // به data URL تبدیل می‌کنیم تا بعد از بسته‌شدن Space هم قابل نمایش باشد
+    try {
+      const r = await fetch(url, { headers: authHeaders(token) });
+      if (r.ok) {
+        const b = await r.blob();
+        return await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(b); });
       }
-    }
-
-    if (options.onStatus) options.onStatus('Uploading six images to the Hugging Face Space…');
-    const labels = {
-      person: 'person.png',
-      upper: 'upper.png',
-      lower: 'lower.png',
-      dress: 'dress.png',
-      shoes: 'shoes.png',
-      bag: 'bag.png'
-    };
-    const uploaded = {};
-    for (const key of imageKeys) {
-      if (options.onStatus) options.onStatus('Uploading ' + key + ' image…');
-      uploaded[key] = await upload(host, token, options.images[key], labels[key]);
-    }
-
-    const data = [
-      uploaded.person,
-      uploaded.upper,
-      uploaded.lower,
-      uploaded.dress,
-      uploaded.shoes,
-      uploaded.bag,
-      Number(options.refSize || 512),
-      Number(options.steps || 30),
-      Number(options.guidance || 2.5),
-      Boolean(options.squareMask),
-      Number(options.seed ?? 42),
-      Boolean(options.poseGuidance)
-    ];
-
-    if (options.onStatus) options.onStatus('Generating outfit. The model may take several minutes…');
-    const result = await callApi(host, token, data, options.onStatus);
-    const file = findFile(result[0]);
-    if (!file) throw new Error('The Space completed but no output image was found in its response.');
-    if (options.onStatus) options.onStatus('Downloading generated image…');
-    const imageDataUrl = await fetchResultAsDataUrl(host, token, file);
-    return { imageDataUrl, raw: result };
+    } catch (_) { /* CORS؛ آدرس مستقیم */ }
+    return url;
   }
 
-  async function testConnection(spaceId, token) {
-    const host = getHost(spaceId || DEFAULT_SPACE);
-    const response = await fetch(host + '/config', { headers: authHeaders((token || '').trim()) });
-    if (!response.ok) throw new Error(await readError(response));
-    const config = await response.json();
-    const api = config && config.named_endpoints && config.named_endpoints[API_NAME];
-    return { host, endpoint: API_NAME, available: Boolean(api), config };
-  }
-
-  window.FastFitTryOn = { DEFAULT_SPACE, generate, testConnection };
+  window.HFTryOn = { PRESETS, spaceHost, info, run };
 })();
