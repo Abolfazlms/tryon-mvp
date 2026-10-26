@@ -1,154 +1,116 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>اتاق پرو آنلاین — MVP</title>
-  <meta name="description" content="نسخه‌ی آزمایشی مانکن آنلاین: لباس فروشگاه‌های مختلف را روی بدن خودتان ببینید.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Experimental multi-garment virtual try-on demo.">
+  <title>Virtual Try-On MVP</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <header class="top">
-    <h1>اتاق پرو آنلاین</h1>
-    <span class="badge">MVP آزمایشی</span>
-    <span class="muted" id="catalog-info"></span>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">EXPERIMENTAL AI DEMO</p>
+      <h1>Virtual Try-On</h1>
+      <p class="subtitle">Preview a complete outfit with FastFit multi-garment generation.</p>
+    </div>
+    <span class="pill">MVP</span>
   </header>
 
-  <noscript><p class="notice">برای استفاده از این صفحه، جاوااسکریپت باید فعال باشد.</p></noscript>
+  <main>
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">STEP 1</p><h2>Your photo</h2></div>
+      </div>
+      <p class="muted">Use a clear, full-body photo with the person standing upright. Your photo is sent to the configured model only when you start generation.</p>
+      <label class="upload-card" for="person-image">
+        <span class="upload-icon">＋</span>
+        <strong>Choose person image</strong>
+        <span class="muted">JPG, PNG, or WEBP</span>
+      </label>
+      <input id="person-image" type="file" accept="image/png,image/jpeg,image/webp">
+      <div id="person-preview" class="preview person-preview"><span>No photo selected</span></div>
+    </section>
 
-  <main class="layout">
-    <!-- ۱) مشخصات بدن -->
-    <section class="panel" aria-labelledby="h-body">
-      <h2 id="h-body">۱. مشخصات شما</h2>
-      <form id="body-form" autocomplete="off">
-        <div class="seg" role="radiogroup" aria-label="جنسیت">
-          <label><input type="radio" name="gender" value="women" checked><span>زنانه</span></label>
-          <label><input type="radio" name="gender" value="men"><span>مردانه</span></label>
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">STEP 2</p><h2>Garment reference images</h2></div>
+      </div>
+      <p class="notice">The current FastFit API schema marks all garment image inputs as required. Upload an image for each slot. Use isolated product photos on a plain background where possible.</p>
+      <div class="garment-grid">
+        <div class="garment-field">
+          <label for="upper-image">Top / upper body</label>
+          <input id="upper-image" type="file" accept="image/png,image/jpeg,image/webp">
+          <div id="upper-preview" class="preview"><span>No image selected</span></div>
         </div>
-        <label class="field">قد (cm)
-          <input type="number" name="height" min="140" max="210" value="165" inputmode="numeric">
-        </label>
-        <label class="field">وزن (kg)
-          <input type="number" name="weight" min="35" max="160" value="60" inputmode="numeric">
-        </label>
-        <details>
-          <summary>اندازه‌های دقیق‌تر (اختیاری)</summary>
-          <label class="field">دور سینه (cm)
-            <input type="number" name="chest" min="60" max="160" inputmode="numeric" placeholder="تخمینی">
-          </label>
-          <label class="field">دور کمر (cm)
-            <input type="number" name="waist" min="50" max="150" inputmode="numeric" placeholder="تخمینی">
-          </label>
-          <label class="field">دور باسن (cm)
-            <input type="number" name="hip" min="70" max="170" inputmode="numeric" placeholder="تخمینی">
-          </label>
-          <label class="field">طول کف پا (cm)
-            <input type="number" name="foot" min="20" max="32" step="0.5" inputmode="decimal" placeholder="تخمینی">
-          </label>
-        </details>
-        <p class="hint" id="estimate-hint"></p>
-      </form>
-
-      <h3>عکس شما (اختیاری)</h3>
-      <p class="hint">عکس فقط در مرورگر شما می‌ماند و به جایی فرستاده نمی‌شود، مگر «حالت هوش مصنوعی» را خودتان روشن کنید.</p>
-      <input type="file" id="photo-input" accept="image/*">
-      <button type="button" class="link" id="photo-clear" hidden>حذف عکس</button>
+        <div class="garment-field">
+          <label for="lower-image">Lower body</label>
+          <input id="lower-image" type="file" accept="image/png,image/jpeg,image/webp">
+          <div id="lower-preview" class="preview"><span>No image selected</span></div>
+        </div>
+        <div class="garment-field">
+          <label for="dress-image">Dress / one-piece</label>
+          <input id="dress-image" type="file" accept="image/png,image/jpeg,image/webp">
+          <div id="dress-preview" class="preview"><span>No image selected</span></div>
+        </div>
+        <div class="garment-field">
+          <label for="shoes-image">Shoes</label>
+          <input id="shoes-image" type="file" accept="image/png,image/jpeg,image/webp">
+          <div id="shoes-preview" class="preview"><span>No image selected</span></div>
+        </div>
+        <div class="garment-field">
+          <label for="bag-image">Bag</label>
+          <input id="bag-image" type="file" accept="image/png,image/jpeg,image/webp">
+          <div id="bag-preview" class="preview"><span>No image selected</span></div>
+        </div>
+      </div>
     </section>
 
-    <!-- ۲) پیش‌نمایش -->
-    <section class="stage" aria-labelledby="h-stage">
-      <h2 id="h-stage" class="sr-only">پیش‌نمایش</h2>
-      <div class="tabs" role="tablist" id="view-tabs">
-        <button role="tab" data-view="mannequin" aria-selected="true">مانکن</button>
-        <button role="tab" data-view="photo" aria-selected="false" hidden>عکس من</button>
-        <button role="tab" data-view="ai" aria-selected="false" hidden>تصویر هوش مصنوعی</button>
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">STEP 3</p><h2>Generation settings</h2></div>
       </div>
-      <div class="view" id="view-box" aria-live="polite"></div>
-
-      <div class="summary" id="summary"></div>
+      <div class="settings-grid">
+        <label>Hugging Face Space
+          <input id="hf-space" type="text" value="PrathamMMallya999/fastfit-tryon" autocomplete="off">
+        </label>
+        <label>Read token (optional)
+          <input id="hf-token" type="password" placeholder="hf_…" autocomplete="off">
+        </label>
+        <label class="check-row"><input id="remember-token" type="checkbox"> Remember token in this browser</label>
+        <label>Reference image size
+          <select id="ref-size"><option value="512" selected>512</option><option value="768">768</option></select>
+        </label>
+        <label>Inference steps
+          <input id="steps" type="number" min="10" max="60" value="30">
+        </label>
+        <label>Guidance scale
+          <input id="guidance" type="number" min="1" max="10" step="0.1" value="2.5">
+        </label>
+        <label>Seed
+          <input id="seed" type="number" min="0" max="2147483647" value="42">
+        </label>
+        <label class="check-row"><input id="square-mask" type="checkbox"> Square mask</label>
+        <label class="check-row"><input id="pose-guidance" type="checkbox" checked> Pose guidance</label>
+      </div>
       <div class="actions">
-        <button type="button" id="btn-ai" class="primary">ساخت تصویر با هوش مصنوعی (آزمایشی)</button>
-        <button type="button" id="btn-download">ذخیره‌ی تصویر مانکن</button>
-        <button type="button" id="btn-reset" class="link">پاک‌کردن انتخاب‌ها</button>
+        <button id="generate-btn" class="primary">Generate try-on</button>
+        <button id="test-btn" class="secondary">Test Space connection</button>
       </div>
-      <p class="hint">مانکن فقط نمای تقریبی اندازه و رنگ است. تصویر واقعی‌تر با حالت هوش مصنوعی ساخته می‌شود.</p>
+      <div id="status" class="status" role="status" aria-live="polite">Ready when you are.</div>
     </section>
 
-    <!-- ۳) کاتالوگ -->
-    <section class="panel" aria-labelledby="h-shop">
-      <h2 id="h-shop">۲. انتخاب لباس</h2>
-      <div class="tabs" role="tablist" id="cat-tabs"></div>
-      <div class="filters">
-        <label>فروشگاه
-          <select id="f-shop"><option value="">همه</option></select>
-        </label>
-        <label>مرتب‌سازی
-          <select id="f-sort">
-            <option value="default">پیش‌فرض</option>
-            <option value="asc">ارزان‌ترین</option>
-            <option value="desc">گران‌ترین</option>
-          </select>
-        </label>
-        <label class="check"><input type="checkbox" id="f-mysize"> فقط موجود در سایز من</label>
-      </div>
-      <ul class="products" id="products"></ul>
+    <section class="panel result-panel">
+      <div class="section-heading"><div><p class="eyebrow">RESULT</p><h2>Generated image</h2></div></div>
+      <div id="result" class="result-stage"><span>Your generated image will appear here.</span></div>
+      <a id="download-result" class="button-link" hidden download="fastfit-tryon.png">Download result</a>
     </section>
   </main>
 
-  <dialog id="ai-dialog">
-    <form method="dialog" id="ai-form">
-      <h2>حالت هوش مصنوعی (آزمایشی)</h2>
-      <div class="seg" role="radiogroup" aria-label="سرویس">
-        <label><input type="radio" name="provider" value="hf" checked><span>Hugging Face (رایگان)</span></label>
-        <label><input type="radio" name="provider" value="gemini"><span>Gemini (پولی)</span></label>
-      </div>
-
-      <div id="box-hf">
-        <p class="hint">عکس شما و تصویر لباس‌ها از مرورگر شما به یک Space عمومی روی Hugging Face فرستاده می‌شود. سهمیه‌ی GPU حساب رایگان کم است (حدود چند تصویر در روز) و مدل‌ها فقط برای استفاده‌ی غیرتجاری‌اند. <strong>کفش پشتیبانی نمی‌شود.</strong></p>
-        <label class="field">مدل
-          <select id="hf-preset"></select>
-        </label>
-        <label class="field">آدرس Space (owner/name)
-          <input type="text" id="hf-space" dir="ltr" autocomplete="off">
-        </label>
-        <label class="field">توکن Hugging Face (نوع Read)
-          <input type="password" id="hf-token" autocomplete="off" placeholder="hf_…" dir="ltr">
-        </label>
-        <label class="check"><input type="checkbox" id="hf-remember"> توکن را در همین مرورگر به خاطر بسپار</label>
-        <p class="hint">توکن را از huggingface.co/settings/tokens بگیرید. فقط توکن Read یک‌بارمصرف بگذارید. بدون توکن هم کار می‌کند ولی سهمیه کمتر است.</p>
-        <details>
-          <summary>عکس واقعی لباس‌ها (پیشنهادی)</summary>
-          <p class="hint">کاتالوگ نمونه عکس ندارد و فقط یک آیکن ساده می‌فرستد؛ نتیجه ضعیف می‌شود. برای هر لباس انتخاب‌شده یک عکس تخت روی زمینه‌ی سفید بدهید.</p>
-          <div id="hf-garments"></div>
-        </details>
-        <button type="button" class="link" id="hf-test">تست اتصال (نمایش endpointهای Space)</button>
-        <pre id="hf-test-out" class="hint" dir="ltr" hidden></pre>
-      </div>
-
-      <div id="box-gemini" hidden>
-        <p class="hint">عکس شما و تصویر لباس‌ها مستقیماً از مرورگر به API گوگل (Gemini) می‌رود. کلید خودتان لازم است و هزینه‌ی هر تصویر (حدود 4 سنت) به حساب شما می‌خورد. <strong>Gemini API در همه‌ی کشورها، از جمله ایران، در دسترس نیست.</strong></p>
-        <label class="field">کلید API
-          <input type="password" id="ai-key" autocomplete="off" placeholder="AIza…" dir="ltr">
-        </label>
-      </div>
-
-      <label class="check"><input type="checkbox" id="ai-consent"> اجازه می‌دهم عکس من برای ساخت این تصویر به سرویس انتخاب‌شده ارسال شود. (کلید و عکس در این صفحه ذخیره نمی‌شوند.)</label>
-      <p class="hint">این صفحه برای آزمایش است. نسخه‌ی تولیدی باید از سرور خودمان استفاده کند تا کلید پنهان بماند.</p>
-      <div class="actions">
-        <button value="cancel" class="link">انصراف</button>
-        <button value="go" id="ai-go" class="primary">ساخت تصویر</button>
-      </div>
-    </form>
-  </dialog>
-
   <footer>
-    <p>قیمت‌ها و فروشگاه‌ها نمونه‌اند. جدول سایز عمومی است و جایگزین جدول هر برند نمی‌شود.</p>
+    <p>Experimental only. Do not upload images unless you have permission to use them. Review the upstream model's terms before use.</p>
   </footer>
-
-  <script src="assets/hf.js" defer></script>
-  <script src="assets/app.js" defer></script>
+  <script src="assets/hf.js"></script>
+  <script src="assets/app.js"></script>
 </body>
 </html>

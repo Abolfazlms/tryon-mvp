@@ -1,0 +1,116 @@
+{
+  "updated_at": "2026-10-26T23:15:02+00:00",
+  "count": 6,
+  "items": [
+    {
+      "id": "demo-top-01",
+      "shop": "Demo Store",
+      "category": "top",
+      "title": "Sample cotton top",
+      "price": 450000,
+      "color_name": "White",
+      "color_hex": "#f4f2ec",
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "style": "tee",
+      "gender": "unisex",
+      "url": "https://example.com/product/top-01",
+      "image": ""
+    },
+    {
+      "id": "demo-bottom-01",
+      "shop": "Demo Store",
+      "category": "bottom",
+      "title": "Sample straight trousers",
+      "price": 890000,
+      "color_name": "Black",
+      "color_hex": "#222222",
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "style": "straight",
+      "gender": "unisex",
+      "url": "https://example.com/product/bottom-01",
+      "image": ""
+    },
+    {
+      "id": "demo-outer-01",
+      "shop": "Demo Store",
+      "category": "outer",
+      "title": "Sample jacket",
+      "price": 1250000,
+      "color_name": "Olive",
+      "color_hex": "#68745b",
+      "sizes": [
+        "M",
+        "L",
+        "XL"
+      ],
+      "style": "jacket",
+      "gender": "unisex",
+      "url": "https://example.com/product/outer-01",
+      "image": ""
+    },
+    {
+      "id": "demo-dress-01",
+      "shop": "Demo Store",
+      "category": "dress",
+      "title": "Sample one-piece dress",
+      "price": 990000,
+      "color_name": "Blue",
+      "color_hex": "#526c91",
+      "sizes": [
+        "S",
+        "M",
+        "L"
+      ],
+      "style": "dress",
+      "gender": "women",
+      "url": "https://example.com/product/dress-01",
+      "image": ""
+    },
+    {
+      "id": "demo-shoes-01",
+      "shop": "Demo Store",
+      "category": "shoes",
+      "title": "Sample sneakers",
+      "price": 1100000,
+      "color_name": "White",
+      "color_hex": "#f4f2ec",
+      "sizes": [
+        "38",
+        "39",
+        "40",
+        "41",
+        "42"
+      ],
+      "style": "sneaker",
+      "gender": "unisex",
+      "url": "https://example.com/product/shoes-01",
+      "image": ""
+    },
+    {
+      "id": "demo-bag-01",
+      "shop": "Demo Store",
+      "category": "bag",
+      "title": "Sample shoulder bag",
+      "price": 780000,
+      "color_name": "Brown",
+      "color_hex": "#805b43",
+      "sizes": [
+        "One"
+      ],
+      "style": "shoulder",
+      "gender": "women",
+      "url": "https://example.com/product/bag-01",
+      "image": ""
+    }
+  ]
+}
